@@ -50,7 +50,10 @@ describe('ResourceEstimator', () => {
 
   it('returns unmapped when the resource declares no SKU', async () => {
     const estimator = new ResourceEstimator(CONFIG);
-    const outcome = await estimator.estimate({ ...vmResource(), vmSize: undefined });
+    // Omit vmSize entirely (exactOptionalPropertyTypes rejects explicit undefined).
+    const { vmSize: _omitted, ...noSku } = vmResource();
+    void _omitted;
+    const outcome = await estimator.estimate(noSku);
     expect(outcome.kind).toBe('unmapped');
   });
 

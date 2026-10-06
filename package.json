@@ -1,1 +1,93 @@
-{"activationEvents":["onLanguage:bicep"],"bugs":{"url":"https://github.com/gritfytechnologies/bicep-cost-lens/issues"},"categories":["Azure","Other"],"contributes":{"commands":[{"command":"bicep-cost-lens.estimateFile","title":"Cost Lens: Estimate File Cost"},{"command":"bicep-cost-lens.requestAudit","title":"Cost Lens: Get a Full FinOps Audit"}],"configuration":{"properties":{"bicepCostLens.auditUrl":{"default":"https://gritfytechnologies.com","description":"Destination for the 'Get a full FinOps audit' action.","type":"string"},"bicepCostLens.currency":{"default":"CAD","description":"ISO currency code for cost estimates (e.g. CAD, USD).","type":"string"},"bicepCostLens.region":{"default":"canadacentral","description":"Azure region used for retail price lookups (e.g. canadacentral, eastus).","type":"string"}},"title":"Bicep Cost Lens"}},"description":"Directional monthly cost estimates on Bicep resources, right in the editor. Free. No account. No backend. No telemetry.","devDependencies":{"@types/mocha":"^10.0.10","@types/node":"^20.17.0","@types/vscode":"^1.85.0","@vitest/coverage-v8":"^2.1.8","@vscode/test-electron":"^2.4.1","@vscode/vsce":"^2.26.0","esbuild":"^0.24.0","eslint":"^9.14.0","eslint-config-prettier":"^9.1.0","glob":"^13.0.6","mocha":"^12.0.3","prettier":"^3.3.3","typescript":"^5.6.3","typescript-eslint":"^8.13.0","vitest":"^2.1.8"},"displayName":"Bicep Cost Lens","engines":{"vscode":"^1.85.0"},"homepage":"https://github.com/gritfytechnologies/bicep-cost-lens#readme","keywords":["bicep","azure","cost","finops","pricing"],"license":"MIT","main":"./dist/extension.js","name":"bicep-cost-lens","publisher":"gritfytechnologies","repository":{"type":"git","url":"https://github.com/gritfytechnologies/bicep-cost-lens.git"},"scripts":{"build":"node esbuild.js","lint":"eslint src test e2e","package":"vsce package --no-yarn","test":"vitest run --coverage","test:e2e":"node ./e2e/runTest.js","typecheck":"tsc --noEmit","watch":"node esbuild.js --watch"},"version":"0.1.0"}
+{
+  "activationEvents": [
+    "onLanguage:bicep"
+  ],
+  "bugs": {
+    "url": "https://github.com/gritfytechnologies/bicep-cost-lens/issues"
+  },
+  "categories": [
+    "Azure",
+    "Other"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "bicep-cost-lens.estimateFile",
+        "title": "Cost Lens: Estimate File Cost"
+      },
+      {
+        "command": "bicep-cost-lens.requestAudit",
+        "title": "Cost Lens: Get a Full FinOps Audit"
+      }
+    ],
+    "configuration": {
+      "properties": {
+        "bicepCostLens.auditUrl": {
+          "default": "https://gritfytechnologies.com",
+          "description": "Destination for the 'Get a full FinOps audit' action.",
+          "type": "string"
+        },
+        "bicepCostLens.currency": {
+          "default": "CAD",
+          "description": "ISO currency code for cost estimates (e.g. CAD, USD).",
+          "type": "string"
+        },
+        "bicepCostLens.region": {
+          "default": "canadacentral",
+          "description": "Azure region used for retail price lookups (e.g. canadacentral, eastus).",
+          "type": "string"
+        }
+      },
+      "title": "Bicep Cost Lens"
+    }
+  },
+  "description": "Directional monthly cost estimates on Bicep resources, right in the editor. Free. No account. No backend. No telemetry.",
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.17.0",
+    "@types/vscode": "^1.85.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "@vscode/test-electron": "^2.4.1",
+    "@vscode/vsce": "^2.26.0",
+    "esbuild": "^0.24.0",
+    "eslint": "^9.14.0",
+    "eslint-config-prettier": "^9.1.0",
+    "glob": "^13.0.6",
+    "mocha": "^12.0.3",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0",
+    "vitest": "^2.1.8"
+  },
+  "displayName": "Bicep Cost Lens",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "homepage": "https://github.com/gritfytechnologies/bicep-cost-lens#readme",
+  "keywords": [
+    "bicep",
+    "azure",
+    "cost",
+    "finops",
+    "pricing"
+  ],
+  "license": "MIT",
+  "main": "./dist/extension.js",
+  "name": "bicep-cost-lens",
+  "publisher": "gritfytechnologies",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gritfytechnologies/bicep-cost-lens.git"
+  },
+  "scripts": {
+    "build": "node esbuild.js",
+    "lint": "eslint src test e2e",
+    "package": "vsce package --no-yarn",
+    "test": "vitest run --coverage",
+    "test:e2e": "node ./e2e/runTest.js",
+    "typecheck": "tsc --noEmit",
+    "watch": "node esbuild.js --watch"
+  },
+  "version": "0.1.0",
+  "icon": "media/icon.png"
+}
