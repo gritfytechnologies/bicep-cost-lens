@@ -29,6 +29,13 @@ module.exports = tseslint.config(
     },
   },
   {
+    // CLI: console output is the product (stdout report, stderr errors).
+    files: ['src/cli.ts'],
+    rules: {
+      'no-console': 'off',
+    },
+  },
+  {
     ignores: ['dist/**', 'node_modules/**', '.vscode-test/**'],
   },
 );

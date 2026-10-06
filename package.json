@@ -89,5 +89,8 @@
     "watch": "node esbuild.js --watch"
   },
   "version": "0.1.0",
-  "icon": "media/icon.png"
+  "icon": "media/icon.png",
+  "bin": {
+    "bicep-cost-lens": "./dist/cli.js"
+  }
 }

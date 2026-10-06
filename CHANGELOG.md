@@ -16,3 +16,7 @@ and versioning follows [Semantic Versioning](https://semver.org/).
   destination via `bicepCostLens.auditUrl`).
 - 24-hour price cache with honest stale labeling; plain-language offline degradation.
 - Zero runtime dependencies; lazy activation on Bicep files only.
+- `bicep-cost-lens` CLI (`dist/cli.js`): same engine as a pipeline cost gate —
+  `node dist/cli.js --budget 500 --currency CAD infra/main.bicep` prints a
+  markdown/JSON estimate and exits 2 when over budget. Single bundled file,
+  zero install: `curl` it and run with Node 20+.
