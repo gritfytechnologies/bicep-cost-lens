@@ -3,6 +3,7 @@
  * over a Bicep resource declaration.
  */
 import * as vscode from 'vscode';
+import { isBicepDocument } from './bicepDocuments';
 import { formatRange } from './costEstimator';
 import type { ResourceEstimator } from './estimator';
 import { parseBicepResources } from './parser';
@@ -59,7 +60,9 @@ export class CostHoverProvider implements vscode.HoverProvider {
     position: vscode.Position,
     _token: vscode.CancellationToken,
   ): Promise<vscode.Hover | undefined> {
-    if (document.languageId !== 'bicep') {
+    // Filename counts too: without Microsoft's Bicep extension there is no
+    // 'bicep' language id, but a `.bicep` file should still estimate.
+    if (!isBicepDocument(document)) {
       return undefined;
     }
     const resources = parseBicepResources(document.getText());

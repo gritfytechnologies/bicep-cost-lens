@@ -133,4 +133,39 @@ describe('ResourceEstimator', () => {
       expect(outcome.reason).toContain("Couldn't reach Azure's price list");
     }
   });
+
+  it('estimates a storage account whose SKU only exists under the catalog display name', async () => {
+    // The live catalog lists storage SKUs in `skuName` with spaces
+    // ('Standard LRS') and an empty `armSkuName`; the ARM-style underscore
+    // name declared in Bicep matches nothing. Before the candidate lookup
+    // this degraded to a noPrices skip.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        const filter = decodeURIComponent(new URL(url).searchParams.get('$filter') ?? '');
+        const items = filter.includes("skuName eq 'Standard LRS'")
+          ? [
+              {
+                armSkuName: '',
+                skuName: 'Standard LRS',
+                serviceName: 'Storage',
+                meterName: 'LRS Data Stored',
+                retailPrice: 0.05,
+                unitOfMeasure: '1 GB/Month',
+              },
+            ]
+          : [];
+        return { ok: true, json: async () => ({ Items: items, NextPageLink: null }) };
+      }),
+    );
+    const estimator = new ResourceEstimator(CONFIG);
+    const outcome = await estimator.estimate({
+      symbolicName: 'storage',
+      resourceType: 'Microsoft.Storage/storageAccounts',
+      apiVersion: '2023-01-01',
+      skuName: 'Standard_LRS',
+      line: 1,
+    });
+    expect(outcome.kind).toBe('estimate');
+  });
 });

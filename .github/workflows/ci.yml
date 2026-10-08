@@ -1,5 +1,12 @@
 name: CI
 
+# Mirrors the local four-gate pipeline (`npm run pipeline`):
+#   build job   → gate 1 (code) + gate 4 (package verification)
+#   e2e job     → gate 2 (headless e2e)
+#   catalog job → gate 3 (live Retail Prices catalog contract)
+# Marketplace publishing is deliberately not automated — it stays a human
+# step; the tag release below only attaches the VSIX to a GitHub release.
+
 on:
   push:
     branches: [main]
@@ -9,7 +16,7 @@ on:
 
 jobs:
   build:
-    name: Lint, typecheck, test, package
+    name: Gate 1 + 4 — code, package, verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -18,18 +25,18 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run lint
-      - run: npm run typecheck
-      - run: npm run test
-      - run: npm run build
-      - run: npx vsce package --no-yarn
+      - name: Typecheck, lint, unit tests
+        run: npm run gate:code
+      - name: Package + verify VSIX
+        run: npm run gate:package
       - uses: actions/upload-artifact@v4
         with:
           name: vsix
           path: '*.vsix'
+          if-no-files-found: error
 
   e2e:
-    name: Headless e2e
+    name: Gate 2 — headless e2e
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -38,8 +45,25 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run build
-      - run: xvfb-run -a npm run test:e2e
+      - name: Install xvfb (virtual display for the test host)
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      # scripts/run-e2e.js wraps the test host in xvfb-run when headless.
+      - run: npm run gate:e2e
+
+  catalog:
+    name: Gate 3 — live catalog contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Probes the live Retail Prices API through the built CLI. A red job
+      # means catalog drift (a fixture SKU stopped resolving) or the API
+      # is unreachable — the gate output says which, never a silent pass.
+      - run: npm run gate:catalog
 
   release:
     name: Release on tag

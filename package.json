@@ -1,6 +1,8 @@
 {
   "activationEvents": [
-    "onLanguage:bicep"
+    "onLanguage:bicep",
+    "workspaceContains:**/*.bicep",
+    "workspaceContains:**/*.bicepparam"
   ],
   "bugs": {
     "url": "https://github.com/gritfytechnologies/bicep-cost-lens/issues"
@@ -81,14 +83,19 @@
   },
   "scripts": {
     "build": "node esbuild.js",
-    "lint": "eslint src test e2e",
+    "lint": "eslint src test e2e scripts",
     "package": "vsce package --no-yarn",
     "test": "vitest run --coverage",
-    "test:e2e": "node ./e2e/runTest.js",
+    "test:e2e": "node scripts/run-e2e.js",
     "typecheck": "tsc --noEmit",
-    "watch": "node esbuild.js --watch"
+    "watch": "node esbuild.js --watch",
+    "gate:code": "npm run typecheck && npm run lint && npm test",
+    "gate:e2e": "npm run build && npm run test:e2e",
+    "gate:catalog": "npm run build && node scripts/catalog-contract.js",
+    "gate:package": "npm run build && npm run package && node scripts/verify-package.js",
+    "pipeline": "npm run gate:code && npm run gate:e2e && npm run gate:catalog && npm run gate:package"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "icon": "media/icon.png",
   "bin": {
     "bicep-cost-lens": "./dist/cli.js"

@@ -1,8 +1,10 @@
 /**
  * Bicep Cost Lens — extension entry point.
  *
- * Activation is lazy (`onLanguage:bicep`): nothing runs until a Bicep file
- * is opened. Every user-facing failure degrades to a plain-language message.
+ * Activation is lazy: on the `bicep` language (needs Microsoft's Bicep
+ * extension) or when the workspace contains `.bicep` / `.bicepparam`
+ * files (works without it). Every user-facing failure degrades to a
+ * plain-language message.
  */
 import * as vscode from 'vscode';
 import { createAuditStatusBarItem, updateAuditStatusBarItem } from './auditCta';
@@ -28,7 +30,16 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.languages.registerHoverProvider({ language: 'bicep', scheme: 'file' }, new CostHoverProvider(getEstimator)),
+    // Language selector for files VS Code knows as Bicep, plus filename
+    // patterns so hover works where that language id doesn't exist.
+    vscode.languages.registerHoverProvider(
+      [
+        { language: 'bicep', scheme: 'file' },
+        { scheme: 'file', pattern: '**/*.bicep' },
+        { scheme: 'file', pattern: '**/*.bicepparam' },
+      ],
+      new CostHoverProvider(getEstimator),
+    ),
   );
 
   context.subscriptions.push(

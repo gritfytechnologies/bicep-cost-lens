@@ -11,6 +11,7 @@ const PURE_LOGIC = [
   'src/pricesClient.ts',
   'src/cache.ts',
   'src/estimator.ts',
+  'src/bicepDocuments.ts',
 ];
 
 export default defineConfig({

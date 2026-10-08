@@ -2,6 +2,7 @@
  * Thin client for the Azure Retail Prices API (https://prices.azure.com).
  * No API key needed — the API is public and anonymous.
  */
+import { skuCandidates } from './priceMap';
 import type { PriceItem } from './types';
 
 const API_BASE = 'https://prices.azure.com/api/retail/prices';
@@ -29,16 +30,20 @@ interface RetailPricePage {
   NextPageLink?: string | null;
 }
 
-/** Build the request URL for one SKU lookup. Exported for unit tests. */
-export function buildPricesUrl(
+/** Which catalog name field a lookup filters on. */
+export type SkuNameField = 'armSkuName' | 'skuName';
+
+/** Build the request URL for one name-field lookup. Exported for unit tests. */
+export function buildSkuPricesUrl(
   serviceName: string,
-  armSkuName: string,
+  field: SkuNameField,
+  skuValue: string,
   region: string,
   currency: string,
 ): string {
   const filter = [
     `serviceName eq '${serviceName}'`,
-    `armSkuName eq '${armSkuName}'`,
+    `${field} eq '${skuValue}'`,
     `armRegionName eq '${region}'`,
     `priceType eq 'Consumption'`,
   ].join(' and ');
@@ -47,6 +52,16 @@ export function buildPricesUrl(
     currencyCode: `'${currency}'`,
   });
   return `${API_BASE}?${params.toString()}`;
+}
+
+/** Build the request URL for one SKU lookup. Exported for unit tests. */
+export function buildPricesUrl(
+  serviceName: string,
+  armSkuName: string,
+  region: string,
+  currency: string,
+): string {
+  return buildSkuPricesUrl(serviceName, 'armSkuName', armSkuName, region, currency);
 }
 
 function toPriceItem(record: RetailPriceRecord): PriceItem | undefined {
@@ -96,18 +111,10 @@ async function fetchPage(url: string): Promise<RetailPricePage> {
   }
 }
 
-/**
- * Fetch retail price records for one SKU. Follows pagination (bounded).
- * Throws PricingError with a plain-language message on any failure.
- */
-export async function fetchRetailPrices(
-  serviceName: string,
-  armSkuName: string,
-  region: string,
-  currency: string,
-): Promise<PriceItem[]> {
+/** Follow pagination (bounded) from a start URL and collect trimmed items. */
+async function fetchAllPages(startUrl: string): Promise<PriceItem[]> {
   const items: PriceItem[] = [];
-  let url: string | null | undefined = buildPricesUrl(serviceName, armSkuName, region, currency);
+  let url: string | null | undefined = startUrl;
 
   for (let page = 0; page < MAX_PAGES && url; page++) {
     const data = await fetchPage(url);
@@ -120,4 +127,54 @@ export async function fetchRetailPrices(
     url = data.NextPageLink;
   }
   return items;
+}
+
+/**
+ * Fetch retail price records for one ARM SKU name. Follows pagination
+ * (bounded). Throws PricingError with a plain-language message on failure.
+ */
+export async function fetchRetailPrices(
+  serviceName: string,
+  armSkuName: string,
+  region: string,
+  currency: string,
+): Promise<PriceItem[]> {
+  return fetchAllPages(buildPricesUrl(serviceName, armSkuName, region, currency));
+}
+
+/**
+ * Fetch retail prices for a SKU as declared in Bicep, trying the name
+ * variants (`skuCandidates`) against both catalog name fields.
+ *
+ * The catalog is inconsistent: VM sizes key on `armSkuName`
+ * (`Standard_D2s_v3`), while storage accounts carry an empty `armSkuName`
+ * and the SKU only in `skuName` (`Standard LRS` — verified against the live
+ * catalog in `canadacentral`, where the ARM-style underscore form matches
+ * nothing). So try each variant on `armSkuName` first (the exact, proven
+ * path), then on `skuName`; the first attempt with records wins. A network
+ * or HTTP failure aborts immediately — variants don't mask an outage.
+ */
+export async function fetchPricesForSku(
+  serviceName: string,
+  declaredSku: string,
+  region: string,
+  currency: string,
+): Promise<PriceItem[]> {
+  const variants = skuCandidates(declaredSku);
+  const attempts: [SkuNameField, string][] = [];
+  for (const field of ['armSkuName', 'skuName'] as const) {
+    for (const value of variants) {
+      attempts.push([field, value]);
+    }
+  }
+
+  for (const [field, value] of attempts) {
+    const items = await fetchAllPages(
+      buildSkuPricesUrl(serviceName, field, value, region, currency),
+    );
+    if (items.length > 0) {
+      return items;
+    }
+  }
+  return [];
 }

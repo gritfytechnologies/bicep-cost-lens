@@ -98,3 +98,27 @@ export function resolveSkuName(
   }
   return undefined;
 }
+
+/**
+ * Name variants of a declared SKU to try against the Retail Prices catalog.
+ *
+ * Bicep declares ARM SKU names (`Standard_LRS`), but the catalog often
+ * lists the same SKU under a display name with spaces (`Standard LRS`) —
+ * storage accounts are one example (verified against the live catalog in
+ * `canadacentral`: `skuName eq 'Standard LRS'` returns records where the
+ * underscore form returns none). Returns the trimmed SKU, then its
+ * underscores-to-spaces and spaces-to-underscores forms, deduplicated.
+ */
+export function skuCandidates(skuName: string): string[] {
+  const base = skuName.trim();
+  if (!base) {
+    return [];
+  }
+  const variants = [base, base.replace(/_/g, ' '), base.replace(/ +/g, '_')];
+  // App Service Premium v3 SKUs are catalogued with a space before the
+  // version suffix ('P1 v3'), while Bicep declares 'P1v3' — try both shapes.
+  const spaced = base.replace(/^([A-Za-z]+\d+)(v\d+)$/, '$1 $2');
+  const despaced = base.replace(/\s+(v\d+)$/, '$1');
+  variants.push(spaced, despaced);
+  return [...new Set(variants)];
+}

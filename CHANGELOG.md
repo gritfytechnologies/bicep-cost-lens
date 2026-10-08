@@ -6,6 +6,32 @@ and versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-10-07
+
+### Fixed
+- Works without Microsoft's Bicep extension. Activation, hover, the audit
+  status bar, and `Estimate File Cost` keyed entirely off the `bicep`
+  language id, which only that extension provides — in a plain editor a
+  `.bicep` file got "open a .bicep file first" and no hover. All four now
+  also match on the `.bicep` / `.bicepparam` filename.
+- `Estimate File Cost` no longer needs the Bicep file to be the focused
+  editor: with a non-Bicep file focused it estimates the open `.bicep`
+  file instead, and asks which one when several are open.
+- Storage accounts (and any SKU the catalog lists under a display name)
+  resolve prices again. Lookups only tried the ARM SKU name
+  (`Standard_LRS`); the Retail Prices catalog lists that SKU as
+  `Standard LRS`, so every storage account skipped. Lookups now try both
+  catalog name fields and both spellings before giving up.
+- App Service plan SKUs written without a space (`P1v3`) resolve too.
+  The catalog lists them as `P1 v3`; the lookup now tries that spelling
+  as well.
+
+### Added
+- Four-gate release pipeline (`npm run pipeline`): code (typecheck, lint,
+  unit tests), headless extension e2e against a fixture workspace, a live
+  catalog contract that fails when a fixture SKU stops resolving, and a
+  package verification pass over the built `.vsix`. Mirrored in CI.
+
 ## [0.1.0] — 2026-10-05
 
 ### Added

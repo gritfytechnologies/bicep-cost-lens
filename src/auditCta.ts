@@ -3,6 +3,7 @@
  * Visible only when a Bicep file is open. Keyboard-operable via its command.
  */
 import * as vscode from 'vscode';
+import { isBicepDocument } from './bicepDocuments';
 
 export function createAuditStatusBarItem(context: vscode.ExtensionContext): vscode.StatusBarItem {
   const item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
@@ -14,8 +15,8 @@ export function createAuditStatusBarItem(context: vscode.ExtensionContext): vsco
 }
 
 export function updateAuditStatusBarItem(item: vscode.StatusBarItem): void {
-  const editor = vscode.window.activeTextEditor;
-  if (editor?.document.languageId === 'bicep') {
+  const document = vscode.window.activeTextEditor?.document;
+  if (document && isBicepDocument(document)) {
     item.show();
   } else {
     item.hide();

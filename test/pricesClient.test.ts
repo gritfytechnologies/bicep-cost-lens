@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildPricesUrl, fetchRetailPrices, PricingError } from '../src/pricesClient';
+import {
+  buildPricesUrl,
+  buildSkuPricesUrl,
+  fetchPricesForSku,
+  fetchRetailPrices,
+  PricingError,
+} from '../src/pricesClient';
 
 describe('buildPricesUrl', () => {
   it('builds a filtered Retail Prices URL', () => {
@@ -109,5 +115,102 @@ describe('fetchRetailPrices', () => {
     ).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(PricingError);
     expect((error as Error).message).toContain("Couldn't reach Azure's price list");
+  });
+});
+
+describe('buildSkuPricesUrl', () => {
+  it('can filter on the catalog skuName field', () => {
+    const url = buildSkuPricesUrl('Storage', 'skuName', 'Standard LRS', 'canadacentral', 'CAD');
+    const decoded = decodeURIComponent(url).replace(/\+/g, ' ');
+    expect(decoded).toContain("serviceName eq 'Storage'");
+    expect(decoded).toContain("skuName eq 'Standard LRS'");
+    expect(decoded).toContain("armRegionName eq 'canadacentral'");
+  });
+});
+
+/** Fetch mock that answers from the decoded `$filter` of each request URL. */
+function filterDrivenFetch(
+  handler: (filter: string) => Record<string, unknown>[],
+): ReturnType<typeof vi.fn> {
+  return vi.fn(async (url: string) => {
+    const filter = decodeURIComponent(new URL(url).searchParams.get('$filter') ?? '').replace(
+      /\+/g,
+      ' ',
+    );
+    return { ok: true, json: async () => ({ Items: handler(filter), NextPageLink: null }) };
+  });
+}
+
+describe('fetchPricesForSku', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('uses the armSkuName path when it resolves (virtual machines)', async () => {
+    const fetchMock = filterDrivenFetch((filter) =>
+      filter.includes("armSkuName eq 'Standard_D2s_v3'")
+        ? [
+            {
+              armSkuName: 'Standard_D2s_v3',
+              serviceName: 'Virtual Machines',
+              meterName: 'D2s v3',
+              retailPrice: 0.25,
+              unitOfMeasure: '1 Hour',
+            },
+          ]
+        : [],
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const items = await fetchPricesForSku(
+      'Virtual Machines',
+      'Standard_D2s_v3',
+      'canadacentral',
+      'CAD',
+    );
+    expect(items).toHaveLength(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to the spaced catalog skuName (storage Standard_LRS)', async () => {
+    // Shape recorded from the live catalog: storage records carry an empty
+    // armSkuName; the SKU lives in skuName with spaces, not underscores.
+    const fetchMock = filterDrivenFetch((filter) =>
+      filter.includes("skuName eq 'Standard LRS'")
+        ? [
+            {
+              armSkuName: '',
+              skuName: 'Standard LRS',
+              serviceName: 'Storage',
+              meterName: 'LRS Data Stored',
+              retailPrice: 0.05,
+              unitOfMeasure: '1 GB/Month',
+            },
+          ]
+        : [],
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const items = await fetchPricesForSku('Storage', 'Standard_LRS', 'canadacentral', 'CAD');
+    expect(items).toHaveLength(1);
+    expect(items[0]?.meterName).toBe('LRS Data Stored');
+    // armSkuName attempts (both variants) and skuName underscore came first.
+    expect(fetchMock.mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it('returns empty when no variant resolves anywhere', async () => {
+    const fetchMock = filterDrivenFetch(() => []);
+    vi.stubGlobal('fetch', fetchMock);
+    const items = await fetchPricesForSku('Azure App Service', 'P1v3', 'canadacentral', 'CAD');
+    expect(items).toEqual([]);
+  });
+
+  it('aborts on network failure instead of trying every variant', async () => {
+    const fetchMock = vi.fn(async () => {
+      throw new TypeError('fetch failed');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(
+      fetchPricesForSku('Storage', 'Standard_LRS', 'canadacentral', 'CAD'),
+    ).rejects.toThrow(PricingError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

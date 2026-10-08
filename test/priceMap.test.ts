@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findPricingMapping, resolveSkuName } from '../src/priceMap';
+import { findPricingMapping, resolveSkuName, skuCandidates } from '../src/priceMap';
 import type { BicepResource } from '../src/types';
 
 function resource(overrides: Partial<BicepResource>): BicepResource {
@@ -57,5 +57,26 @@ describe('resolveSkuName', () => {
       throw new Error('expected a mapping for Microsoft.Storage/storageAccounts');
     }
     expect(resolveSkuName(resource({}), mapping)).toBeUndefined();
+  });
+});
+
+describe('skuCandidates', () => {
+  it('returns the SKU itself when no variant applies', () => {
+    expect(skuCandidates('P1v3')).toEqual(['P1v3', 'P1 v3']);
+    expect(skuCandidates('Standard_D2s_v3')).toEqual(['Standard_D2s_v3', 'Standard D2s v3']);
+  });
+
+  it('adds the spaces variant for underscore names (storage Standard_LRS)', () => {
+    expect(skuCandidates('Standard_LRS')).toEqual(['Standard_LRS', 'Standard LRS']);
+  });
+
+  it('adds the underscore variant for spaced names', () => {
+    expect(skuCandidates('Standard LRS')).toEqual(['Standard LRS', 'Standard_LRS']);
+    expect(skuCandidates('P1 v3')).toEqual(['P1 v3', 'P1_v3', 'P1v3']);
+  });
+
+  it('trims and deduplicates', () => {
+    expect(skuCandidates('  B1  ')).toEqual(['B1']);
+    expect(skuCandidates('')).toEqual([]);
   });
 });

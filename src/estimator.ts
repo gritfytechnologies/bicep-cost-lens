@@ -6,7 +6,7 @@
  */
 import { PriceCache } from './cache';
 import { estimateMonthly } from './costEstimator';
-import { fetchRetailPrices, PricingError } from './pricesClient';
+import { fetchPricesForSku, PricingError } from './pricesClient';
 import { findPricingMapping, resolveSkuName } from './priceMap';
 import type { BicepResource, CostEstimate, CostLensConfig } from './types';
 
@@ -57,7 +57,7 @@ export class ResourceEstimator {
     }
 
     try {
-      const items = await fetchRetailPrices(serviceName, skuName, region, currency);
+      const items = await fetchPricesForSku(serviceName, skuName, region, currency);
       this.cache.set(serviceName, skuName, region, currency, items);
       const estimate = estimateMonthly(items, currency);
       if (!estimate) {

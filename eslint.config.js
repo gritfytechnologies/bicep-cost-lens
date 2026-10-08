@@ -29,6 +29,16 @@ module.exports = tseslint.config(
     },
   },
   {
+    // Plain-JS CI scripts: no type information available, CommonJS requires
+    // are fine, and console output is the report.
+    files: ['scripts/**/*.js'],
+    extends: [tseslint.configs.disableTypeChecked],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+      'no-console': 'off',
+    },
+  },
+  {
     // CLI: console output is the product (stdout report, stderr errors).
     files: ['src/cli.ts'],
     rules: {

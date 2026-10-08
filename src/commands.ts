@@ -4,6 +4,7 @@
  * - bicep-cost-lens.requestAudit — opens the FinOps audit CTA destination
  */
 import * as vscode from 'vscode';
+import { pickBicepDocument } from './bicepDocuments';
 import { formatMoney } from './costEstimator';
 import type { ResourceEstimator } from './estimator';
 import { parseBicepResources } from './parser';
@@ -20,14 +21,47 @@ function showError(message: string): void {
   });
 }
 
+/**
+ * Which document Estimate File Cost should act on.
+ *
+ * The active editor wins when it is a Bicep document (by language id or by
+ * `.bicep` filename — the language id only exists when Microsoft's Bicep
+ * extension is installed). Otherwise fall back to an open Bicep document:
+ * directly when there is one, via a quick pick when there are several, and
+ * not at all when there are none (the caller shows guidance instead).
+ */
+async function resolveTargetDocument(): Promise<vscode.TextDocument | undefined> {
+  const pick = pickBicepDocument(
+    vscode.window.activeTextEditor?.document,
+    vscode.workspace.textDocuments,
+  );
+  switch (pick.kind) {
+    case 'active':
+    case 'single':
+      return pick.document;
+    case 'multiple': {
+      const chosen = await vscode.window.showQuickPick(
+        pick.documents.map((document) => ({
+          label: vscode.workspace.asRelativePath(document.uri),
+          document,
+        })),
+        { placeHolder: 'Pick the Bicep file to estimate' },
+      );
+      return chosen?.document;
+    }
+    case 'none':
+      return undefined;
+  }
+}
+
 export function registerEstimateFileCommand(
   context: vscode.ExtensionContext,
   getEstimator: () => ResourceEstimator,
   getConfig: () => CostLensConfig,
 ): vscode.Disposable {
   return vscode.commands.registerCommand('bicep-cost-lens.estimateFile', async () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor || editor.document.languageId !== 'bicep') {
+    const document = await resolveTargetDocument();
+    if (!document) {
       void vscode.window.showInformationMessage(
         'Cost Lens: open a .bicep file first, then estimate its cost.',
       );
@@ -36,7 +70,7 @@ export function registerEstimateFileCommand(
 
     const config = getConfig();
     const estimator = getEstimator();
-    const resources = parseBicepResources(editor.document.getText());
+    const resources = parseBicepResources(document.getText());
     if (resources.length === 0) {
       void vscode.window.showInformationMessage(
         'Cost Lens: no resource declarations found in this file.',
