@@ -1,0 +1,30 @@
+name: Feature request
+description: A resource type, region, or workflow Bicep Cost Lens should cover.
+title: "[Feature]: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what you are trying to get done. Use cases decide priority here — the more concrete, the better.
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use case
+      description: What are you trying to estimate, review, or audit — and who is it for (your team, a client, a cost review)?
+    validations:
+      required: true
+  - type: textarea
+    id: current-workaround
+    attributes:
+      label: Current workaround
+      description: What do you do today instead — the Azure Pricing Calculator, a spreadsheet, portal lookups, nothing?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed-behavior
+    attributes:
+      label: Proposed behavior (optional)
+      description: If you have a shape in mind — a hover, a command, a setting — describe it here.
+    validations:
+      required: false

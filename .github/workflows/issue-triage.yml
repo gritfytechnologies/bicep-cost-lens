@@ -1,0 +1,142 @@
+name: Issue triage
+
+on:
+  issues:
+    types: [opened, reopened]
+
+permissions:
+  issues: write
+
+jobs:
+  triage:
+    name: Classify, label, and acknowledge
+    runs-on: ubuntu-latest
+    steps:
+      - name: Triage issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Fail-safe by design: every risky call is wrapped so a triage
+            // hiccup logs a warning instead of turning the workflow red.
+            try {
+              const issue = context.payload.issue;
+              if (!issue) {
+                core.info('No issue in payload; nothing to triage.');
+                return;
+              }
+
+              const author = (issue.user && issue.user.login) || '';
+              const isBot = !author || author.endsWith('[bot]') || (issue.user && issue.user.type === 'Bot');
+              if (isBot) {
+                core.info(`Skipping bot-authored issue (author: ${author || 'unknown'}).`);
+                return;
+              }
+
+              const text = `${issue.title || ''}\n${issue.body || ''}`.toLowerCase();
+
+              const classes = [
+                {
+                  name: 'bug',
+                  label: 'priority-fix',
+                  color: 'd73a4a',
+                  description: 'Confirmed or likely defect — patch fast-track',
+                  keywords: ['error', 'crash', 'fails', 'failed', 'not working', 'wrong', 'no prices', 'broken', 'exception'],
+                  eta: 'patch target: within 48 hours',
+                  shipNote: 'Every fix ships as a patch release only after passing our full QA gate suite — unit tests, coverage, headless end-to-end tests, a live Azure Retail Prices catalog check, and package verification. When the fixed version is live on the Marketplace, we will update this issue with the version number.',
+                  ask: 'One thing that will speed this up: could you add your VS Code version and a minimal `.bicep` (or `.bicepparam`) file that reproduces the problem? Feel free to strip out anything sensitive — the smallest sample that triggers it is enough.'
+                },
+                {
+                  name: 'enhancement',
+                  label: 'enhancement',
+                  color: 'a2eeef',
+                  description: 'New capability or resource coverage request',
+                  keywords: ['feature', 'request', 'enhancement', 'add support', 'wish'],
+                  eta: 'reviewed within 5 business days',
+                  shipNote: 'If we take it on, it ships through the same QA gates as any other change, and we will update this issue when the version carrying it is live.',
+                  ask: 'One thing that helps us prioritise: could you describe the use case — what are you trying to estimate or audit, and what does the extension leave you doing by hand today?'
+                },
+                {
+                  name: 'question',
+                  label: 'question',
+                  color: 'd876e3',
+                  description: 'Usage or behaviour question',
+                  keywords: [],
+                  eta: 'answered within 2 business days',
+                  shipNote: '',
+                  ask: 'If your question is about a specific estimate, it helps to mention your Bicep Cost Lens version and the resource type involved.'
+                }
+              ];
+
+              const match = classes.find(c => c.keywords.some(k => text.includes(k)));
+              const klass = match || classes[classes.length - 1];
+              core.info(`Classified issue #${issue.number} as ${klass.name} (label: ${klass.label}).`);
+
+              // Make sure the labels we rely on exist; ignore "already exists".
+              for (const c of classes.concat([{ label: 'needs-triage', color: 'fbca04', description: 'Awaiting maintainer review' }])) {
+                try {
+                  await github.rest.issues.createLabel({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    name: c.label,
+                    color: c.color,
+                    description: c.description
+                  });
+                } catch (e) {
+                  // Already exists (or no permission to create) — not fatal.
+                  core.info(`Label "${c.label}" not created (${e.status || e.message}); continuing.`);
+                }
+              }
+
+              // Label: class label + needs-triage. A failure here must not block the comment.
+              try {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  labels: [klass.label, 'needs-triage']
+                });
+              } catch (e) {
+                core.warning(`Labeling failed for issue #${issue.number}: ${e.message}`);
+              }
+
+              // Acknowledge exactly once: skip if a previous bot ack exists.
+              try {
+                const { data: comments } = await github.rest.issues.listComments({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  per_page: 100
+                });
+                const alreadyAcked = comments.some(c => c.user && c.user.login === 'github-actions[bot]');
+                if (alreadyAcked) {
+                  core.info(`Issue #${issue.number} already acknowledged; not commenting again.`);
+                  return;
+                }
+
+                const lines = [
+                  `Thanks for reporting this, @${author} — we've logged it as a **${klass.name}**.`,
+                  '',
+                  `**Response target:** ${klass.eta}.`
+                ];
+                if (klass.shipNote) {
+                  lines.push('', klass.shipNote);
+                }
+                if (klass.ask) {
+                  lines.push('', klass.ask);
+                }
+                lines.push('', '— The Gritfy Technologies team');
+
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: lines.join('\n')
+                });
+                core.info(`Acknowledgment posted on issue #${issue.number}.`);
+              } catch (e) {
+                core.warning(`Acknowledgment comment failed for issue #${issue.number}: ${e.message}`);
+              }
+            } catch (e) {
+              // Never fail the workflow because of triage.
+              core.warning(`Issue triage hit a problem and skipped cleanly: ${e.message}`);
+            }

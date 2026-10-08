@@ -1,0 +1,57 @@
+name: Bug report
+description: Wrong prices, missing prices, or the extension failing outright.
+title: "[Bug]: "
+labels: ["needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting this. Bicep Cost Lens estimates are directional (pre-discount, pre-reservation) — if a price looks wrong or missing, we want to know.
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: In VS Code, open Extensions and search for Bicep Cost Lens (e.g. 0.1.1).
+      placeholder: "0.1.1"
+    validations:
+      required: true
+  - type: input
+    id: vscode-version
+    attributes:
+      label: VS Code version
+      description: Help → About, or run `code --version`.
+      placeholder: "1.9x.x"
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did the extension show — or fail to show? Paste any error text exactly as it appeared.
+    validations:
+      required: true
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What should it have shown or done instead?
+    validations:
+      required: true
+  - type: textarea
+    id: minimal-sample
+    attributes:
+      label: Minimal .bicep / .bicepparam sample
+      description: The smallest file that reproduces the problem. Rename resources freely and strip anything sensitive — a short sample that triggers it is enough.
+      render: bicep
+    validations:
+      required: false
